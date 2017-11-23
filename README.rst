@@ -1,5 +1,5 @@
 PyKajut - Kahoot, python utility
-=================================
+================================
 
 PyKahoot is a graphical tool to edit LaTeX questions specifically design for their use in Kahoot as PNG images.
 Easy to use, modify and extend.
@@ -16,8 +16,7 @@ INSTALLATION
 
 Download the project and uncompress it into any directory:
 
-https://github.com/JMED106/pypsfrag/archive/v0.2.zip
-
+https://github.com/JMED106/pykajut/archive/master.zip
 
 It does not require installation but some python dependencies need to be fulfilled:
 
@@ -32,7 +31,7 @@ In general, in a Debian based system is enough to run: ::
 
 
 HOW TO USE PyKajut
--------------------
+------------------
 
 PyKajut is a python script that runs in a terminal, and offers a GUI in runtime.
 You need to provide the target .tex file to the program: ::
