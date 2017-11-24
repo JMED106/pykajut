@@ -68,6 +68,7 @@ class Data:
         self.density = opts['d']  # Default density for png conversion
         self.qblocks = {}
         self.texcwd = cwd
+        self.crop = opts['crop']
         self.app_path = None
 
         # Paths
@@ -300,8 +301,11 @@ class Kajut(object):
                      '| grep ".*:[0-9]*:.*"' % (filedir, (filename + '.tex')))
         p.close()
         self.logger.debug("Done!")
-        # p = os.popen('pdfcrop --noverbose %s.pdf | grep nothing' % filename)
-        # p.close()
+        if self.d.crop:
+            p = os.popen('pdfcrop --noverbose %s.pdf | grep nothing' % filename)
+            p.close()
+            p = os.popen('mv %s-crop.pdf %s.pdf' % (filename, filename))
+            p.close()
 
         self.logger.debug("Removing auxiliary files ...")
         p = os.popen('rm %s.aux %s.log' % (filename, filename))
@@ -366,6 +370,7 @@ class MainGui:
                    "on_generate_clicked": self.on_generate_clicked,
                    "on_generate_all_clicked": self.on_generate_all_clicked,
                    "on_open_clicked": self.on_open_clicked,
+                   "on_crop_toggled": self.on_crop_toggled,
                    "on_inputfile_activate": self.on_inputfile_activate,
                    "on_inputfile_drag_data_received": self.on_drag_data}
 
@@ -377,6 +382,8 @@ class MainGui:
         self.builder.connect_signals(signals)
         self.pbar = self.builder.get_object("progressbar1")
         self.pngbutton = self.builder.get_object("generate")
+        self.cropbutton = self.builder.get_object("crop")
+        self.cropbutton.set_active(self.d.crop)
         self.allpngbutton = self.builder.get_object("generate_all")
         self.png_image = self.builder.get_object("png_image")
         self.png_image.set_from_icon_name('gtk-missing-image', Gtk.IconSize.DIALOG)
@@ -511,6 +518,10 @@ class MainGui:
         self.logger.debug('Value at %s modified' % event)
         self.d.density = self.densityspin.get_value()
         self.logger.debug('Density for PNG conversion: %d' % self.d.density)
+
+    def on_crop_toggled(self, event):
+        self.logger.debug('RadioButton %s toggled.' % event)
+        self.d.crop = not self.d.crop
 
     def on_entry_activate(self, entry):
         self.logger.debug('Text on %s modified' % entry)
