@@ -188,6 +188,11 @@ class Data:
 
         if questions:
             question_blocks = re.findall(r'% File_name: .*?\\end\{enumerate\}\n', questions[0], re.DOTALL)
+            if not question_blocks:
+                question_blocks = re.findall(r'% File_name: .*?\\end\{tabbedenum\}\n', questions[0], re.DOTALL)
+                design = 1
+            else:
+                design = 0
         else:
             self.logger.warning('Bad format for questions or empty file ...')
             return None
@@ -204,7 +209,13 @@ class Data:
                 self.logger.debug("File name: %s" % name[0])
                 title = re.findall(r'% Title: (.*?)\n', block)
                 self.logger.debug("Title: %s" % title[0])
-                question = re.findall(title[0] + r'\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
+                if design == 0:
+                    question = re.findall(title[0] + r'\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
+                elif design == 1:
+                    question = re.findall(title[0] + r'\n(.*?)\\begin\{tabbedenum\}\{2\}\n', block, re.DOTALL)
+                else:
+                    self.logger.warning('Bad format for questions or empty file ...')
+                    return None
                 self.logger.debug("Question: %s" % question[0])
                 choices = re.findall(r'\\Myitem (.*?)\n', block, re.DOTALL)
                 self.logger.debug("Choices:")
@@ -236,14 +247,21 @@ class Kajut(object):
                         "\\usepackage[paperwidth = 21cm, paperheight = 10cm, left = 0.5cm, " \
                         "right = 0.5cm, top = 0.5cm, bottom = 0.5cm]{geometry}\n" \
                         "\\usepackage{adjustbox}\n" \
+                        "\\setlength{\parindent}{0mm}\n" \
+                        "\\usepackage{paralist}\n" \
+                        "\\usepackage{tabto}\n" \
                         "\\usepackage{intcalc}\n" \
-                        "\\usepackage{enumerate, letltxmacro, multicol}\n" \
+                        "\\usepackage{enumerate, letltxmacro}\n" \
                         "\\newcommand*{\Myitem}{ %\n" \
                         "\\item[{\\adjustbox{valign = c}{\includegraphics[width = " \
                         "1cm]{art/image\intcalcMod{\\value{enumi}}{4}}}}]\stepcounter{enumi} %\n" \
                         "}\n" \
                         "\\LetLtxMacro\itemold\Myitem\n" \
                         "\\renewcommand{\Myitem}{\itemindent1cm\itemold}\n" \
+                        "\\newenvironment{tabbedenum}[1]\n" \
+                        "{\NumTabs{#1}\inparaenum\let\latexitem\Myitem\n" \
+                        "\\def\Myitem{\def\Myitem{\\tab\latexitem}\latexitem}}\n" \
+                        "{\endinparaenum}\n" \
                         "\\usepackage{graphicx, psfrag}\n" \
                         "\\begin{document}\n" \
                         "\\pagestyle{empty}\n" \
@@ -268,13 +286,15 @@ class Kajut(object):
         f.write("% Title: " + qblock['name'] + "\n")
         f.write(qblock['question'])
         if self.d.design == 1:
-            f.write("\\begin{multicols}{2}\n")
-        f.write("\\begin{enumerate}\n")
+            f.write("\\\\\n\\newline\n\\begin{tabbedenum}{2}\n")
+        elif self.d.design == 0:
+            f.write("\\begin{enumerate}\n")
         for k, choice in enumerate(qblock['choices']):
             f.write("\\Myitem " + choice + "\n")
-        f.write("\\end{enumerate}\n")
         if self.d.design == 1:
-            f.write("\\end{multicols}\n")
+            f.write("\\end{tabbedenum}\n")
+        elif self.d.design == 0:
+            f.write("\\end{enumerate}\n")
         f.write(self.ending)
         f.close()
         self.logger.debug("LaTeX file created!")
