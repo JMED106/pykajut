@@ -70,7 +70,8 @@ class Data:
         self.texcwd = cwd
         self.crop = opts['crop']
         self.design = opts['design']
-        self.app_path = None
+        self.app_path = os.path.dirname(__file__)
+        self.logger.debug("The executable is in %s" % self.app_path)
 
         # Paths
         if self.inputfile in (None, "None", "none", "null"):
@@ -130,12 +131,12 @@ class Data:
         self.logger.debug("Checking %s file ..." % fin)
         if not os.path.exists(fin):
             if critical:
-                raise IOError('File %s/%s does not exist.' % (self.cwd, fin))
+                raise IOError('File %s does not exist.' % fin)
             elif warning:
-                self.logger.warning('File %s/%s does not exist.' % (self.cwd, fin))
+                self.logger.warning('File %s does not exist.' % fin)
                 return False
             else:
-                self.logger.error('File %s/%s does not exist.' % (self.cwd, fin))
+                self.logger.error('File %s does not exist.' % fin)
                 return False
         else:
             return True
@@ -252,6 +253,7 @@ class Kajut(object):
                         "\\usepackage{tabto}\n" \
                         "\\usepackage{intcalc}\n" \
                         "\\usepackage{enumerate, letltxmacro}\n" \
+                        "\\graphicspath{{" + self.d.app_path + "/}}\n" \
                         "\\newcommand*{\Myitem}{ %\n" \
                         "\\item[{\\adjustbox{valign = c}{\includegraphics[width = " \
                         "1cm]{art/image\intcalcMod{\\value{enumi}}{4}}}}]\stepcounter{enumi} %\n" \
@@ -262,7 +264,6 @@ class Kajut(object):
                         "{\NumTabs{#1}\inparaenum\let\latexitem\Myitem\n" \
                         "\\def\Myitem{\def\Myitem{\\tab\latexitem}\latexitem}}\n" \
                         "{\endinparaenum}\n" \
-                        "\\usepackage{graphicx, psfrag}\n" \
                         "\\begin{document}\n" \
                         "\\pagestyle{empty}\n" \
                         "\\noindent\n"
@@ -318,6 +319,7 @@ class Kajut(object):
 
         # Compile latex file
         self.logger.debug("Compiling LaTeX ...")
+        os.chdir(self.d.texdir)
         p = os.popen('pdflatex -output-directory=%s -interaction=nonstopmode -file-line-error  %s '
                      '| grep ".*:[0-9]*:.*"' % (filedir, (filename + '.tex')))
         p.close()
@@ -339,11 +341,15 @@ class Kajut(object):
         self.logger.info("Done!")
 
         p = os.popen('mv %s.png %s' % (filename, self.d.pngdir))
-        p.close()
+        png = p.close()
+
+        if png:
+            p = os.popen('mv %s/*.png %s' % (self.d.texdir, self.d.pngdir))
+
         p = os.popen('mv %s.pdf %s' % (filename, self.d.pdfdir))
         p.close()
         self.logger.debug("All jobs finished.")
-        return True
+        return True, png
 
 
 class MainGui:
@@ -569,10 +575,15 @@ class MainGui:
         self.selected_name = name
         self.logger.debug('Selected question: %s' % name)
         filename = self.d.pngdir + '/tex-' + name + '.png'
+        filename2 = self.d.pngdir + '/tex-' + name + '-0.png'
         # Check whether a PNG file exists for the selected question
         if self.d.check_file(filename, critical=False, warning=True):
             # Display the PNG in the canvas area
             pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename, 1000, -1, True)
+            self.png_image.set_from_pixbuf(pixbuf)
+        elif self.d.check_file(filename2, critical=False, warning=True): # Check if the png is in multiple files
+            self.logger.warning("The file needs more than one page. Multiple PNG files created.")
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename2, 1000, -1, True)
             self.png_image.set_from_pixbuf(pixbuf)
         else:
             self.png_image.set_from_icon_name('gtk-missing-image', Gtk.IconSize.DIALOG)
@@ -666,8 +677,13 @@ class MainGui:
         else:
             filename = self.kj.create_latex(self.d.qblocks[self.selected_name])
             self.png_image.set_from_icon_name('gtk-missing-image', Gtk.IconSize.DIALOG)
-            if self.kj.create_png(filename):
-                pngfile = self.d.pngdir + '/tex-' + self.selected_name + '.png'
+            success, png = self.kj.create_png(filename)
+            if success:
+                if not png:
+                    pngfile = self.d.pngdir + '/tex-' + self.selected_name + '.png'
+                else:
+                    pngfile = self.d.pngdir + '/tex-' + self.selected_name + '-0.png'
+                    self.logger.warning("The file needs more than one page. Multiple PNG files created.")
                 # Check whether a PNG file exists for the selected question
                 if self.d.check_file(pngfile, critical=False, warning=True):
                     # Display the PNG in the canvas area
