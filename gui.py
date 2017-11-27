@@ -69,6 +69,7 @@ class Data:
         self.qblocks = {}
         self.texcwd = cwd
         self.crop = opts['crop']
+        self.design = opts['design']
         self.app_path = None
 
         # Paths
@@ -236,7 +237,7 @@ class Kajut(object):
                         "right = 0.5cm, top = 0.5cm, bottom = 0.5cm]{geometry}\n" \
                         "\\usepackage{adjustbox}\n" \
                         "\\usepackage{intcalc}\n" \
-                        "\\usepackage{enumerate, letltxmacro}\n" \
+                        "\\usepackage{enumerate, letltxmacro, multicol}\n" \
                         "\\newcommand*{\Myitem}{ %\n" \
                         "\\item[{\\adjustbox{valign = c}{\includegraphics[width = " \
                         "1cm]{art/image\intcalcMod{\\value{enumi}}{4}}}}]\stepcounter{enumi} %\n" \
@@ -263,17 +264,17 @@ class Kajut(object):
         f.write(self.preamble)
         # % File_name: T1_c1.1_q1
         # % Title: Pregunta 1
-        f.write("% File_name: ")
-        f.write(qblock['name'])
-        f.write("\n")
-        f.write("% Title: ")
-        f.write(qblock['name'])
-        f.write("\n")
+        f.write("% File_name: " + qblock['name'] + "\n")
+        f.write("% Title: " + qblock['name'] + "\n")
         f.write(qblock['question'])
+        if self.d.design == 1:
+            f.write("\\begin{multicols}{2}\n")
         f.write("\\begin{enumerate}\n")
         for k, choice in enumerate(qblock['choices']):
             f.write("\\Myitem " + choice + "\n")
         f.write("\\end{enumerate}\n")
+        if self.d.design == 1:
+            f.write("\\end{multicols}\n")
         f.write(self.ending)
         f.close()
         self.logger.debug("LaTeX file created!")
@@ -342,9 +343,6 @@ class MainGui:
         self.window = self.builder.get_object("window1")
         self.window.connect("delete-event", Gtk.main_quit)
 
-        # self.edit_dialog = self.builder.get_object("edit_dialog")
-        # self.edit_dialog.connect("delete-event", self.edit_dialog._destroy)
-
         self.densityspin = self.builder.get_object("density")
         self.densityspin.set_value(self.d.density)
 
@@ -371,6 +369,7 @@ class MainGui:
                    "on_generate_all_clicked": self.on_generate_all_clicked,
                    "on_open_clicked": self.on_open_clicked,
                    "on_crop_toggled": self.on_crop_toggled,
+                   "on_toggled": self.on_design_toggled,
                    "on_inputfile_activate": self.on_inputfile_activate,
                    "on_inputfile_drag_data_received": self.on_drag_data}
 
@@ -384,10 +383,11 @@ class MainGui:
         self.pngbutton = self.builder.get_object("generate")
         self.cropbutton = self.builder.get_object("crop")
         self.cropbutton.set_active(self.d.crop)
+        designbutton = self.builder.get_object("design" + ("%d" % data.design))
+        designbutton.set_active(True)
         self.allpngbutton = self.builder.get_object("generate_all")
         self.png_image = self.builder.get_object("png_image")
         self.png_image.set_from_icon_name('gtk-missing-image', Gtk.IconSize.DIALOG)
-        frame = self.builder.get_object('frame')
         color = Gdk.Color(red=65535, green=65535, blue=65535)
         self.png_image.modify_bg(Gtk.StateFlags.NORMAL, color)
         self.timeout_id = None
@@ -522,6 +522,16 @@ class MainGui:
     def on_crop_toggled(self, event):
         self.logger.debug('RadioButton %s toggled.' % event)
         self.d.crop = not self.d.crop
+
+    def on_design_toggled(self, button):
+        name = button.get_name()
+        self.logger.debug('RadioButton %s with name %s toggled.' % (button, name))
+        design = int(name[len("design"):])
+        self.logger.debug("Design is %d" % design)
+        if button.get_active():
+            self.d.design = design
+        else:
+            pass
 
     def on_entry_activate(self, entry):
         self.logger.debug('Text on %s modified' % entry)
