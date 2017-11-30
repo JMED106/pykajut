@@ -21,6 +21,7 @@ import re
 import threading
 import urllib
 import logging
+from operator import add
 
 try:
     import gi
@@ -73,6 +74,13 @@ class Data:
         self.app_path = os.path.dirname(__file__)
         self.logger.debug("The executable is in %s" % self.app_path)
 
+        # LaTeX related options
+        self.enumerate = ["enumerate", "tabbedenum"]
+        self.extra_packages = []
+        self.pagedimensions = {'A4': ['21cm', '29.7cm'], 'default': ['21cm', '10cm'], 'custom': ['21cm', '10cm']}
+        self.page = 'default'
+        self.margins = ['0.5cm', '0.5cm', '0.5cm', '0.5cm']
+
         # Paths
         if self.inputfile in (None, "None", "none", "null"):
             self.texpath = None
@@ -101,6 +109,7 @@ class Data:
         self.texname = self.texfile[0:-4]
         self.logger.debug('Tex file name: %s' % self.texname)
         self.texdir = os.path.dirname(self.texpath)
+        self.texdir = os.path.realpath(self.texdir)
         self.texcwd = self.texdir
         if self.texdir == "":  # If the file has local path format we add ./
             self.texdir = "./"
@@ -126,6 +135,7 @@ class Data:
         Check if the file exists
         :param fin: input file's path.
         :param critical: forces the program to stop if the file is not found. Default is True.
+        :param warning: Raise a warning instead of an error.
         :return: True if the file exists. False if it does not.
         """
         self.logger.debug("Checking %s file ..." % fin)
@@ -187,13 +197,13 @@ class Data:
         else:
             questions = [ifile]
 
+        enum = "(" + "|".join(map(str, self.enumerate)) + ")"
         if questions:
-            question_blocks = re.findall(r'% File_name: .*?\\end\{enumerate\}\n', questions[0], re.DOTALL)
-            if not question_blocks:
-                question_blocks = re.findall(r'% File_name: .*?\\end\{tabbedenum\}\n', questions[0], re.DOTALL)
-                design = 1
-            else:
-                design = 0
+            question_blocks = re.findall(r'(% File_name: )(.*?)' + enum + r'(.*?)' + enum + r'(\}\n)',
+                                         questions[0], re.DOTALL)
+            if question_blocks:
+                for k, block in enumerate(question_blocks):
+                    question_blocks[k] = "".join(map(str, block))
         else:
             self.logger.warning('Bad format for questions or empty file ...')
             return None
@@ -210,11 +220,10 @@ class Data:
                 self.logger.debug("File name: %s" % name[0])
                 title = re.findall(r'% Title: (.*?)\n', block)
                 self.logger.debug("Title: %s" % title[0])
-                if design == 0:
-                    question = re.findall(title[0] + r'\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
-                elif design == 1:
+                question = re.findall(title[0] + r'\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
+                if not question:
                     question = re.findall(title[0] + r'\n(.*?)\\begin\{tabbedenum\}\{2\}\n', block, re.DOTALL)
-                else:
+                if not question:
                     self.logger.warning('Bad format for questions or empty file ...')
                     return None
                 self.logger.debug("Question: %s" % question[0])
@@ -239,38 +248,12 @@ class Kajut(object):
         self.d = data
 
         # Basic configuration for LaTeX
-        self.preamble = "\\documentclass[12pt]{article}\n" \
-                        "\\usepackage[english, catalan]{babel}\n" \
-                        "\\usepackage[utf8]{inputenc}\n" \
-                        "\\usepackage{amsmath, amssymb, amsthm}\n" \
-                        "\\usepackage{color}\n" \
-                        "\\usepackage{graphicx}\n" \
-                        "\\usepackage[paperwidth = 21cm, paperheight = 10cm, left = 0.5cm, " \
-                        "right = 0.5cm, top = 0.5cm, bottom = 0.5cm]{geometry}\n" \
-                        "\\usepackage{adjustbox}\n" \
-                        "\\setlength{\parindent}{0mm}\n" \
-                        "\\usepackage{paralist}\n" \
-                        "\\usepackage{tabto}\n" \
-                        "\\usepackage{intcalc}\n" \
-                        "\\usepackage{enumerate, letltxmacro}\n" \
-                        "\\graphicspath{{" + self.d.app_path + "/}}\n" \
-                        "\\newcommand*{\Myitem}{ %\n" \
-                        "\\item[{\\adjustbox{valign = c}{\includegraphics[width = " \
-                        "1cm]{art/image\intcalcMod{\\value{enumi}}{4}}}}]\stepcounter{enumi} %\n" \
-                        "}\n" \
-                        "\\LetLtxMacro\itemold\Myitem\n" \
-                        "\\renewcommand{\Myitem}{\itemindent1cm\itemold}\n" \
-                        "\\newenvironment{tabbedenum}[1]\n" \
-                        "{\NumTabs{#1}\inparaenum\let\latexitem\Myitem\n" \
-                        "\\def\Myitem{\def\Myitem{\\tab\latexitem}\latexitem}}\n" \
-                        "{\endinparaenum}\n" \
-                        "\\begin{document}\n" \
-                        "\\pagestyle{empty}\n" \
-                        "\\noindent\n"
-
+        self.preamble = None
         self.ending = "\\end{document}\n"
 
     def create_latex(self, qblock):
+        if not self.preamble:
+            self.set_preamble(self.d.page)
         if not self.d.texdir:
             self.logger.warning("There is no path defined ...")
             # TODO: ask for a path to save files
@@ -302,9 +285,10 @@ class Kajut(object):
         return filename
 
     def create_png(self, filename):
-        # Create latex file
+        filename = os.path.realpath(filename)
+        # Compile latex file
         self.logger.debug("Using latex file  %s ..." % (filename + '.tex'))
-        filedir = self.d.texdir
+        filedir = os.path.realpath(self.d.texdir)
         # Check for the necessary paths
         if not os.path.exists(self.d.pngdir):
             try:
@@ -345,11 +329,72 @@ class Kajut(object):
 
         if png:
             p = os.popen('mv %s/*.png %s' % (self.d.texdir, self.d.pngdir))
+            p.close()
 
         p = os.popen('mv %s.pdf %s' % (filename, self.d.pdfdir))
         p.close()
         self.logger.debug("All jobs finished.")
         return True, png
+
+    def geometry(self, pagestyle='default'):
+        (width, height) = self.d.pagedimensions[pagestyle]
+        self.logger.debug("Paper dimensions: (W, H) = (%s, %s)." % (width, height))
+        margins = "".join(map(str, map(add, [',left=', ',right=', ',top=', ',bottom='], self.d.margins)))
+        self.logger.debug("Text margins:  %s." % margins)
+        geom = "\\usepackage[paperwidth=" + width + ",paperheight=" + height + margins + "]{geometry}\n"
+        return geom
+
+    def set_preamble(self, pagestyle='default', external=None):
+        self.logger.debug("Generating LaTeX preamble...")
+        if not external:
+            geom = self.geometry(pagestyle)
+            self.preamble = "\\documentclass[12pt]{article}\n" \
+                            "\\usepackage[english, catalan]{babel}\n" \
+                            "\\usepackage[utf8]{inputenc}\n" \
+                            "\\usepackage{amsmath, amssymb, amsthm}\n" \
+                            "\\usepackage{color}\n" \
+                            "\\usepackage{graphicx}\n"
+            self.preamble = self.preamble + geom
+            self.preamble = self.preamble + "" \
+                                            "\\usepackage{adjustbox}\n" \
+                                            "\\setlength{\parindent}{0mm}\n" \
+                                            "\\usepackage{paralist}\n" \
+                                            "\\usepackage{tabto}\n" \
+                                            "\\usepackage{intcalc}\n" \
+                                            "\\usepackage{enumerate, letltxmacro}\n"
+            for package in self.d.extra_packages:
+                self.preamble += "\\usepackage{" + package + "}\n"
+            self.preamble = self.preamble + "" \
+                                            "\\graphicspath{{" + self.d.app_path + "/}}\n" \
+                                            "\\newcommand*{\Myitem}{ %\n" \
+                                            "\\item[{\\adjustbox{valign = c}{\includegraphics[width = " \
+                                            "1cm]{art/image\intcalcMod{\\value{enumi}}{4}}}}]\stepcounter{enumi} %\n" \
+                                            "}\n" \
+                                            "\\LetLtxMacro\itemold\Myitem\n" \
+                                            "\\renewcommand{\Myitem}{\itemindent1cm\itemold}\n" \
+                                            "\\newenvironment{tabbedenum}[1]\n" \
+                                            "{\NumTabs{#1}\inparaenum\let\latexitem\Myitem\n" \
+                                            "\\def\Myitem{\def\Myitem{\\tab\latexitem}\latexitem}}\n" \
+                                            "{\endinparaenum}\n" \
+                                            "\\begin{document}\n" \
+                                            "\\pagestyle{empty}\n" \
+                                            "\\noindent\n"
+        else:
+            self.logger.debug("Loading preamble from %s..." % external)
+            with open(external, "r") as f:
+                content = f.read()
+                preamble = re.findall(r'% BEGIN PREAMBLE\n(.*?)% END PREAMBLE\n', content, re.DOTALL)
+            if preamble:
+                self.preamble = preamble[0]
+            else:
+                self.logger.error("Bad format of the latex document. I could not detect any clear preamble.\n"
+                                  "Use:\n"
+                                  "% BEGIN PREAMBLE\n"
+                                  "[preamble]\n"
+                                  "% END PREAMBLE\n")
+                self.logger.warning("Using default preamble...")
+                self.set_preamble(self.d.page)
+        self.logger.debug("Done!")
 
 
 class MainGui:
@@ -396,6 +441,8 @@ class MainGui:
                    "on_open_clicked": self.on_open_clicked,
                    "on_crop_toggled": self.on_crop_toggled,
                    "on_toggled": self.on_design_toggled,
+                   "on_dimension_toggled": self.on_dimensions_toggled,
+                   "on_margins_set_clicked": self.on_margins_set_clicked,
                    "on_inputfile_activate": self.on_inputfile_activate,
                    "on_inputfile_drag_data_received": self.on_drag_data}
 
@@ -411,6 +458,17 @@ class MainGui:
         self.cropbutton.set_active(self.d.crop)
         designbutton = self.builder.get_object("design" + ("%d" % data.design))
         designbutton.set_active(True)
+        papersize = self.builder.get_object("dimension2")
+        papersize.set_active(True)
+        for k in xrange(2):
+            size = self.builder.get_object("size" + str(k))
+            size.set_text(self.d.pagedimensions['custom'][k])
+        self.margins = []
+        margins = ('lm', 'rm', 'tm', 'bm')
+        for k, margin in enumerate(margins):
+            self.margins.append(self.builder.get_object(margin))
+            self.margins[k].set_text(self.d.margins[k])
+
         self.allpngbutton = self.builder.get_object("generate_all")
         self.png_image = self.builder.get_object("png_image")
         self.png_image.set_from_icon_name('gtk-missing-image', Gtk.IconSize.DIALOG)
@@ -559,10 +617,34 @@ class MainGui:
         else:
             pass
 
+    def on_dimensions_toggled(self, button):
+        name = button.get_name()
+        self.logger.debug('RadioButton %s with name %s toggled.' % (button, name))
+        if button.get_active():
+            self.logger.debug("Selected page style is %s" % name)
+            self.d.page = name
+            self.kj.set_preamble(self.d.page)
+        else:
+            pass
+
     def on_entry_activate(self, entry):
         self.logger.debug('Text on %s modified' % entry)
         name = entry.get_name()
         self.logger.debug('Entry widget name: %s' % name)
+        if re.match("margin", name):
+            margin = int(name[len("margin"):])
+            self.d.margins[margin] = entry.get_text()
+        elif re.match("size", name):
+            size = int(name[len("size"):])
+            self.d.pagedimensions['custom'][size] = entry.get_text()
+        self.kj.set_preamble(self.d.page)
+
+    def on_margins_set_clicked(self, event):
+        """ Set margins."""
+        self.logger.debug('Button %s pressed' % event)
+        for k, entry in enumerate(self.margins):
+            self.d.margins[k] = entry.get_text()
+        self.kj.set_preamble(self.d.page)
 
     def on_selected(self, selection):
         model, treeiter = selection.get_selected()
@@ -579,11 +661,11 @@ class MainGui:
         # Check whether a PNG file exists for the selected question
         if self.d.check_file(filename, critical=False, warning=True):
             # Display the PNG in the canvas area
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename, 1000, -1, True)
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename, 880, -1, True)
             self.png_image.set_from_pixbuf(pixbuf)
-        elif self.d.check_file(filename2, critical=False, warning=True): # Check if the png is in multiple files
+        elif self.d.check_file(filename2, critical=False, warning=True):  # Check if the png is in multiple files
             self.logger.warning("The file needs more than one page. Multiple PNG files created.")
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename2, 1000, -1, True)
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(filename2, 880, -1, True)
             self.png_image.set_from_pixbuf(pixbuf)
         else:
             self.png_image.set_from_icon_name('gtk-missing-image', Gtk.IconSize.DIALOG)
@@ -683,12 +765,13 @@ class MainGui:
                     pngfile = self.d.pngdir + '/tex-' + self.selected_name + '.png'
                 else:
                     pngfile = self.d.pngdir + '/tex-' + self.selected_name + '-0.png'
-                    self.logger.warning("The file needs more than one page. Multiple PNG files created.")
                 # Check whether a PNG file exists for the selected question
                 if self.d.check_file(pngfile, critical=False, warning=True):
                     # Display the PNG in the canvas area
-                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(pngfile, 1000, -1, True)
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(pngfile, 880, -1, True)
                     self.png_image.set_from_pixbuf(pixbuf)
+                    if png:
+                        self.logger.warning("The file needs more than one page. Multiple PNG files created.")
         self.logger.info("Done.")
         GObject.source_remove(self.timeout_id)
         self.pbar.set_fraction(0.0)
@@ -706,6 +789,7 @@ class MainGui:
         dialog.add_filter(filter_any)
 
 
+# noinspection PyAttributeOutsideInit
 class EditDialog(Gtk.Dialog):
     __gtype_name__ = 'EditDialog'
 
@@ -771,7 +855,7 @@ class EditDialog(Gtk.Dialog):
         name = self.entry.get_text()
         self.name = name
         # Check if the name is new
-        if not self.qblocks.has_key(name):
+        if name not in self.qblocks:
             self.new = True
         if name not in (None, ""):
             sentence = self.get_text(self.sentence)
