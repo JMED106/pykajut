@@ -227,7 +227,7 @@ class Data:
                     self.logger.warning('Bad format for questions or empty file ...')
                     return None
                 self.logger.debug("Question: %s" % question[0])
-                choices = re.findall(r'\\Myitem (.*?)\n', block, re.DOTALL)
+                choices = re.findall(r'\\Myitem (.*?%enditem)\n', block, re.DOTALL)
                 self.logger.debug("Choices:")
                 self.logger.debug(choices)
                 correct = None
@@ -256,43 +256,43 @@ class Kajut(object):
 
         self.sizes = None
         self.set_sizes()
-        design = "\\def\\kajut#1#2#3#4{\n"\
+        design = "\\def\\kajut#1#2#3#4{\n" \
                  "  \\vspace*{1em}\n" \
                  "  \\noindent\n" \
-                 "  \\begin{tabular}{c} \n"\
-                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n"\
-                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image0}}}\n"\
-                 "    \\end{minipage}\\hspace*{0.5em}\n"\
-                 "    \\begin{minipage}[t]{0.4\\textwidth}\n"\
-                 "      {\n"\
-                 "        \\Size #1\n"\
-                 "      }\n"\
-                 "    \\end{minipage}\\hspace*{0.5em}\n"\
-                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n"\
-                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image1}}}\n"\
-                 "    \\end{minipage}\\hspace*{0.5em}\n"\
-                 "    \\begin{minipage}[t]{0.4\\textwidth}\n"\
-                 "      {\n"\
-                 "        \\Size #2\n"\
-                 "      }\n"\
-                 "    \\end{minipage}\\\\[1.5em] \n"\
-                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n"\
-                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image2}}}\n"\
-                 "    \\end{minipage}\\hspace*{0.5em}\n"\
-                 "    \\begin{minipage}[t]{0.4\\textwidth}\n"\
-                 "      {\n"\
-                 "        \\Size #3\n"\
-                 "      }\n"\
-                 "    \\end{minipage}\\hspace*{0.5em}\n"\
-                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n"\
-                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image3}}}\n"\
-                 "    \\end{minipage}\\hspace*{0.5em}\n"\
-                 "    \\begin{minipage}[t]{0.4\\textwidth}\n"\
-                 "      {\n"\
-                 "       \\Size #4\n"\
-                 "      }\n"\
-                 "    \\end{minipage}\\\\\n"\
-                 "  \\end{tabular}\n"\
+                 "  \\begin{tabular}{c} \n" \
+                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n" \
+                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image0}}}\n" \
+                 "    \\end{minipage}\\hspace*{0.5em}\n" \
+                 "    \\begin{minipage}[t]{0.4\\textwidth}\n" \
+                 "      {\n" \
+                 "        \\Size #1\n" \
+                 "      }\n" \
+                 "    \\end{minipage}\\hspace*{0.5em}\n" \
+                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n" \
+                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image1}}}\n" \
+                 "    \\end{minipage}\\hspace*{0.5em}\n" \
+                 "    \\begin{minipage}[t]{0.4\\textwidth}\n" \
+                 "      {\n" \
+                 "        \\Size #2\n" \
+                 "      }\n" \
+                 "    \\end{minipage}\\\\[1.5em] \n" \
+                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n" \
+                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image2}}}\n" \
+                 "    \\end{minipage}\\hspace*{0.5em}\n" \
+                 "    \\begin{minipage}[t]{0.4\\textwidth}\n" \
+                 "      {\n" \
+                 "        \\Size #3\n" \
+                 "      }\n" \
+                 "    \\end{minipage}\\hspace*{0.5em}\n" \
+                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n" \
+                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image3}}}\n" \
+                 "    \\end{minipage}\\hspace*{0.5em}\n" \
+                 "    \\begin{minipage}[t]{0.4\\textwidth}\n" \
+                 "      {\n" \
+                 "       \\Size #4\n" \
+                 "      }\n" \
+                 "    \\end{minipage}\\\\\n" \
+                 "  \\end{tabular}\n" \
                  "}\n"
 
         design2 = "\\def\\kajut#1#2#3#4{\n" \
@@ -302,7 +302,7 @@ class Kajut(object):
                   "   \\Myitem \\Size #2\n" \
                   "   \\Myitem \\Size #3\n" \
                   "   \\Myitem \\Size #4\n" \
-                  " \\end{enumerate}  \n"\
+                  " \\end{enumerate}  \n" \
                   "}\n"
 
         design3 = "\\def\\kajut#1#2#3#4{\n" \
@@ -312,11 +312,10 @@ class Kajut(object):
                   "    \\Myitem \\Size #2\n" \
                   "    \\Myitem \\Size #3\n" \
                   "    \\Myitem \\Size #4\n" \
-                  "  \\end{tabbedenum}  \n"\
+                  "  \\end{tabbedenum}  \n" \
                   "}\n"
 
         self.designs = {"tabular": design, "enumerate": design2, "tabbed": design3}
-
 
     def create_latex(self, qblock):
         if not self.preamble:
@@ -412,7 +411,6 @@ class Kajut(object):
                      "\\def\\QSize{%s}\n" \
                      "\\def\\ISize{%f}\n" % (self.size, self.qsize, self.isize)
 
-
     def set_preamble(self, pagestyle='default', external=None):
         self.logger.debug("Generating LaTeX preamble...")
         if not external:
@@ -434,19 +432,19 @@ class Kajut(object):
             for package in self.d.extra_packages:
                 self.preamble += "\\usepackage{" + package + "}\n"
             self.preamble = self.preamble + "\\graphicspath{{" + self.d.app_path + "/}}\n" \
-                                            "\\newcommand*{\Myitem}{ %\n" \
-                                            "\\item[{\\adjustbox{valign = c}{\includegraphics[width = " \
-                                            "1cm]{art/image\intcalcMod{\\value{enumi}}{4}}}}]\stepcounter{enumi} %\n" \
-                                            "}\n" \
-                                            "\\LetLtxMacro\itemold\Myitem\n" \
-                                            "\\renewcommand{\Myitem}{\itemindent1cm\itemold}\n" \
-                                            "\\newenvironment{tabbedenum}[1]\n" \
-                                            "{\NumTabs{#1}\inparaenum\let\latexitem\Myitem\n" \
-                                            "\\def\Myitem{\def\Myitem{\\tab\latexitem}\latexitem}}\n" \
-                                            "{\endinparaenum}\n" \
-                                            "\\begin{document}\n" \
-                                            "\\pagestyle{empty}\n" \
-                                            "\\noindent\n"
+                                                                                   "\\newcommand*{\Myitem}{ %\n" \
+                                                                                   "\\item[{\\adjustbox{valign = c}{\includegraphics[width = " \
+                                                                                   "1cm]{art/image\intcalcMod{\\value{enumi}}{4}}}}]\stepcounter{enumi} %\n" \
+                                                                                   "}\n" \
+                                                                                   "\\LetLtxMacro\itemold\Myitem\n" \
+                                                                                   "\\renewcommand{\Myitem}{\itemindent1cm\itemold}\n" \
+                                                                                   "\\newenvironment{tabbedenum}[1]\n" \
+                                                                                   "{\NumTabs{#1}\inparaenum\let\latexitem\Myitem\n" \
+                                                                                   "\\def\Myitem{\def\Myitem{\\tab\latexitem}\latexitem}}\n" \
+                                                                                   "{\endinparaenum}\n" \
+                                                                                   "\\begin{document}\n" \
+                                                                                   "\\pagestyle{empty}\n" \
+                                                                                   "\\noindent\n"
         else:
             self.logger.debug("Loading preamble from %s..." % external)
             with open(external, "r") as f:
