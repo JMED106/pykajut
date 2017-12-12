@@ -250,6 +250,73 @@ class Kajut(object):
         # Basic configuration for LaTeX
         self.preamble = None
         self.ending = "\\end{document}\n"
+        self.qsize = "\\large"
+        self.size = "\\large"
+        self.isize = 0.07
+
+        self.sizes = None
+        self.set_sizes()
+        design = "\\def\\kajut#1#2#3#4{\n"\
+                 "  \\vspace*{1em}\n" \
+                 "  \\noindent\n" \
+                 "  \\begin{tabular}{c} \n"\
+                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n"\
+                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image0}}}\n"\
+                 "    \\end{minipage}\\hspace*{0.5em}\n"\
+                 "    \\begin{minipage}[t]{0.4\\textwidth}\n"\
+                 "      {\n"\
+                 "        \\Size #1\n"\
+                 "      }\n"\
+                 "    \\end{minipage}\\hspace*{0.5em}\n"\
+                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n"\
+                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image1}}}\n"\
+                 "    \\end{minipage}\\hspace*{0.5em}\n"\
+                 "    \\begin{minipage}[t]{0.4\\textwidth}\n"\
+                 "      {\n"\
+                 "        \\Size #2\n"\
+                 "      }\n"\
+                 "    \\end{minipage}\\\\[1.5em] \n"\
+                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n"\
+                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image2}}}\n"\
+                 "    \\end{minipage}\\hspace*{0.5em}\n"\
+                 "    \\begin{minipage}[t]{0.4\\textwidth}\n"\
+                 "      {\n"\
+                 "        \\Size #3\n"\
+                 "      }\n"\
+                 "    \\end{minipage}\\hspace*{0.5em}\n"\
+                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n"\
+                 "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image3}}}\n"\
+                 "    \\end{minipage}\\hspace*{0.5em}\n"\
+                 "    \\begin{minipage}[t]{0.4\\textwidth}\n"\
+                 "      {\n"\
+                 "       \\Size #4\n"\
+                 "      }\n"\
+                 "    \\end{minipage}\\\\\n"\
+                 "  \\end{tabular}\n"\
+                 "}\n"
+
+        design2 = "\\def\\kajut#1#2#3#4{\n" \
+                  " \\noindent\n" \
+                  " \\begin{enumerate}\n" \
+                  "   \\Myitem \\Size #1\n" \
+                  "   \\Myitem \\Size #2\n" \
+                  "   \\Myitem \\Size #3\n" \
+                  "   \\Myitem \\Size #4\n" \
+                  " \\end{enumerate}  \n"\
+                  "}\n"
+
+        design3 = "\\def\\kajut#1#2#3#4{\n" \
+                  "\\noindent\n" \
+                  "  \\begin{tabbedenum}{2}\n" \
+                  "    \\Myitem \\Size #1\n" \
+                  "    \\Myitem \\Size #2\n" \
+                  "    \\Myitem \\Size #3\n" \
+                  "    \\Myitem \\Size #4\n" \
+                  "  \\end{tabbedenum}  \n"\
+                  "}\n"
+
+        self.designs = {"tabular": design, "enumerate": design2, "tabbed": design3}
+
 
     def create_latex(self, qblock):
         if not self.preamble:
@@ -264,21 +331,17 @@ class Kajut(object):
 
         f = open(filepath, 'w')
         f.write(self.preamble)
+        # Font sizes and design
+        f.write(self.sizes)
+        f.write(self.designs[self.d.design])
+        for a, choice in zip(["A", "B", "C", "D"], qblock['choices']):
+            f.write("\\def\\" + a + "{" + choice + "\n}\n")
         # % File_name: T1_c1.1_q1
         # % Title: Pregunta 1
         f.write("% File_name: " + qblock['name'] + "\n")
         f.write("% Title: " + qblock['name'] + "\n")
-        f.write(qblock['question'])
-        if self.d.design == 1:
-            f.write("\\\\\n\\newline\n\\begin{tabbedenum}{2}\n")
-        elif self.d.design == 0:
-            f.write("\\begin{enumerate}\n")
-        for k, choice in enumerate(qblock['choices']):
-            f.write("\\Myitem " + choice + "\n")
-        if self.d.design == 1:
-            f.write("\\end{tabbedenum}\n")
-        elif self.d.design == 0:
-            f.write("\\end{enumerate}\n")
+        f.write("{\\Size\n" + qblock['question'] + "\n}\n")
+        f.write("\\kajut{\\A}{\\B}{\\C}{\\D}\n")
         f.write(self.ending)
         f.close()
         self.logger.debug("LaTeX file created!")
@@ -344,6 +407,12 @@ class Kajut(object):
         geom = "\\usepackage[paperwidth=" + width + ",paperheight=" + height + margins + "]{geometry}\n"
         return geom
 
+    def set_sizes(self):
+        self.sizes = "\\def\\Size{%s}\n" \
+                     "\\def\\QSize{%s}\n" \
+                     "\\def\\ISize{%f}\n" % (self.size, self.qsize, self.isize)
+
+
     def set_preamble(self, pagestyle='default', external=None):
         self.logger.debug("Generating LaTeX preamble...")
         if not external:
@@ -364,8 +433,7 @@ class Kajut(object):
                                             "\\usepackage{enumerate, letltxmacro}\n"
             for package in self.d.extra_packages:
                 self.preamble += "\\usepackage{" + package + "}\n"
-            self.preamble = self.preamble + "" \
-                                            "\\graphicspath{{" + self.d.app_path + "/}}\n" \
+            self.preamble = self.preamble + "\\graphicspath{{" + self.d.app_path + "/}}\n" \
                                             "\\newcommand*{\Myitem}{ %\n" \
                                             "\\item[{\\adjustbox{valign = c}{\includegraphics[width = " \
                                             "1cm]{art/image\intcalcMod{\\value{enumi}}{4}}}}]\stepcounter{enumi} %\n" \
@@ -456,7 +524,7 @@ class MainGui:
         self.pngbutton = self.builder.get_object("generate")
         self.cropbutton = self.builder.get_object("crop")
         self.cropbutton.set_active(self.d.crop)
-        designbutton = self.builder.get_object("design" + ("%d" % data.design))
+        designbutton = self.builder.get_object(data.design)
         designbutton.set_active(True)
         papersize = self.builder.get_object("dimension2")
         papersize.set_active(True)
@@ -610,10 +678,8 @@ class MainGui:
     def on_design_toggled(self, button):
         name = button.get_name()
         self.logger.debug('RadioButton %s with name %s toggled.' % (button, name))
-        design = int(name[len("design"):])
-        self.logger.debug("Design is %d" % design)
         if button.get_active():
-            self.d.design = design
+            self.d.design = name
         else:
             pass
 

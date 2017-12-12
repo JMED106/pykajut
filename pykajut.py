@@ -77,8 +77,8 @@ parser.add_argument('-ng', '--nogui', default=False, dest='nogui', action='store
 parser.add_argument('-d', '--density', default=600, dest='d', type=int, help='Density of the png image.')
 parser.add_argument('-c', '--crop', default=False, dest='crop', action='store_true',
                     help='Crop the image, erasing any white margins.')
-parser.add_argument('-D', '--design', default=0, dest='design', type=int, metavar='<design>',
-                    choices=[0, 1],
+parser.add_argument('-D', '--design', default="tabular", dest='design', type=str, metavar='<design>',
+                    choices=["tabular", "enumerate", "tabbed"],
                     help='LaTeX design of the enumerate environment.')
 
 args = parser.parse_args()

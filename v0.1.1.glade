@@ -306,9 +306,9 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkRadioButton" id="design0">
-                        <property name="label" translatable="yes">  Design 0.</property>
-                        <property name="name">design0</property>
+                      <object class="GtkRadioButton" id="tabular">
+                        <property name="label" translatable="yes">Tabular</property>
+                        <property name="name">tabular</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
@@ -316,7 +316,7 @@
                         <property name="hexpand">True</property>
                         <property name="active">True</property>
                         <property name="draw_indicator">True</property>
-                        <property name="group">design1</property>
+                        <property name="group">enumerate</property>
                         <signal name="toggled" handler="on_toggled" swapped="no"/>
                       </object>
                       <packing>
@@ -326,9 +326,9 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkRadioButton" id="design1">
-                        <property name="label" translatable="yes">  Design 1.</property>
-                        <property name="name">design1</property>
+                      <object class="GtkRadioButton" id="enumerate">
+                        <property name="label" translatable="yes">Enumerate</property>
+                        <property name="name">enumerate</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
@@ -341,6 +341,25 @@
                         <property name="expand">False</property>
                         <property name="fill">True</property>
                         <property name="position">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkRadioButton" id="tabbed">
+                        <property name="label" translatable="yes">Tabbed</property>
+                        <property name="name">tabbed</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">False</property>
+                        <property name="halign">center</property>
+                        <property name="hexpand">True</property>
+                        <property name="draw_indicator">True</property>
+                        <property name="group">enumerate</property>
+                        <signal name="toggled" handler="on_toggled" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">3</property>
                       </packing>
                     </child>
                   </object>
