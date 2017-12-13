@@ -381,7 +381,7 @@ class Kajut(object):
         self.logger.debug("Done!")
 
         self.logger.info("Creating png file, with density %d ..." % self.d.density)
-        p = os.popen('convert -density %d %s.pdf %s.png' % (self.d.density, filename, filename))
+        p = os.popen('convert -flatten -density %d %s.pdf %s.png' % (self.d.density, filename, filename))
         p.close()
         self.logger.info("Done!")
 
