@@ -250,9 +250,8 @@ class Kajut(object):
         # Basic configuration for LaTeX
         self.preamble = None
         self.ending = "\\end{document}\n"
-        self.qsize = "\\large"
-        self.size = "\\large"
-        self.isize = 0.07
+        self.latex_sizes = ['tiny', 'scriptsize', 'small', 'normalsize', 'large', 'Large', 'huge', 'Huge']
+        self.sel_sizes = {'qsize': "\\normalsize", 'size': "\\normalsize", "isize": 0.07}
 
         self.sizes = None
         self.set_sizes()
@@ -275,7 +274,7 @@ class Kajut(object):
                  "      {\n" \
                  "        \\Size #2\n" \
                  "      }\n" \
-                 "    \\end{minipage}\\\\[1.5em] \n" \
+                 "    \\end{minipage}\\\\[2em] \n" \
                  "    \\begin{minipage}[t]{\\ISize\\textwidth}\n" \
                  "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image2}}}\n" \
                  "    \\end{minipage}\\hspace*{0.5em}\n" \
@@ -284,10 +283,10 @@ class Kajut(object):
                  "        \\Size #3\n" \
                  "      }\n" \
                  "    \\end{minipage}\\hspace*{0.5em}\n" \
-                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n" \
+                 "    \\begin{minipage}[c]{\\ISize\\textwidth}\n" \
                  "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image3}}}\n" \
                  "    \\end{minipage}\\hspace*{0.5em}\n" \
-                 "    \\begin{minipage}[t]{0.4\\textwidth}\n" \
+                 "    \\begin{minipage}[c]{0.4\\textwidth}\n" \
                  "      {\n" \
                  "       \\Size #4\n" \
                  "      }\n" \
@@ -306,7 +305,7 @@ class Kajut(object):
                   "}\n"
 
         design3 = "\\def\\kajut#1#2#3#4{\n" \
-                  "\\noindent\n" \
+                  "  \\vspace*{1em}\n" \
                   "  \\begin{tabbedenum}{2}\n" \
                   "    \\Myitem \\Size #1\n" \
                   "    \\Myitem \\Size #2\n" \
@@ -339,7 +338,7 @@ class Kajut(object):
         # % Title: Pregunta 1
         f.write("% File_name: " + qblock['name'] + "\n")
         f.write("% Title: " + qblock['name'] + "\n")
-        f.write("{\\Size\n" + qblock['question'] + "\n}\n")
+        f.write("{\\QSize\n" + qblock['question'] + "\n}\n")
         f.write("\\kajut{\\A}{\\B}{\\C}{\\D}\n")
         f.write(self.ending)
         f.close()
@@ -409,7 +408,7 @@ class Kajut(object):
     def set_sizes(self):
         self.sizes = "\\def\\Size{%s}\n" \
                      "\\def\\QSize{%s}\n" \
-                     "\\def\\ISize{%f}\n" % (self.size, self.qsize, self.isize)
+                     "\\def\\ISize{%f}\n" % (self.sel_sizes['size'], self.sel_sizes['qsize'], self.sel_sizes['isize'])
 
     def set_preamble(self, pagestyle='default', external=None):
         self.logger.debug("Generating LaTeX preamble...")
@@ -431,20 +430,21 @@ class Kajut(object):
                                             "\\usepackage{enumerate, letltxmacro}\n"
             for package in self.d.extra_packages:
                 self.preamble += "\\usepackage{" + package + "}\n"
-            self.preamble = self.preamble + "\\graphicspath{{" + self.d.app_path + "/}}\n" \
-                                                                                   "\\newcommand*{\Myitem}{ %\n" \
-                                                                                   "\\item[{\\adjustbox{valign = c}{\includegraphics[width = " \
-                                                                                   "1cm]{art/image\intcalcMod{\\value{enumi}}{4}}}}]\stepcounter{enumi} %\n" \
-                                                                                   "}\n" \
-                                                                                   "\\LetLtxMacro\itemold\Myitem\n" \
-                                                                                   "\\renewcommand{\Myitem}{\itemindent1cm\itemold}\n" \
-                                                                                   "\\newenvironment{tabbedenum}[1]\n" \
-                                                                                   "{\NumTabs{#1}\inparaenum\let\latexitem\Myitem\n" \
-                                                                                   "\\def\Myitem{\def\Myitem{\\tab\latexitem}\latexitem}}\n" \
-                                                                                   "{\endinparaenum}\n" \
-                                                                                   "\\begin{document}\n" \
-                                                                                   "\\pagestyle{empty}\n" \
-                                                                                   "\\noindent\n"
+            self.preamble = self.preamble + "\\graphicspath{{" + self.d.app_path + \
+                            "/}}\n" \
+                            "\\newcommand*{\Myitem}{ %\n" \
+                            "\\item[{\\adjustbox{valign = c}{\includegraphics[width = " \
+                            "1cm]{art/image\intcalcMod{\\value{enumi}}{4}}}}]\stepcounter{enumi} %\n" \
+                            "}\n" \
+                            "\\LetLtxMacro\itemold\Myitem\n" \
+                            "\\renewcommand{\Myitem}{\itemindent1cm\itemold}\n" \
+                            "\\newenvironment{tabbedenum}[1]\n" \
+                            "{\NumTabs{#1}\inparaenum\let\latexitem\Myitem\n" \
+                            "\\def\Myitem{\def\Myitem{\\tab\latexitem}\latexitem}}\n" \
+                            "{\endinparaenum}\n" \
+                            "\\begin{document}\n" \
+                            "\\setlength{\\parindent}{0pt}\n" \
+                            "\\pagestyle{empty}\n"
         else:
             self.logger.debug("Loading preamble from %s..." % external)
             with open(external, "r") as f:
@@ -482,6 +482,24 @@ class MainGui:
 
         self.densityspin = self.builder.get_object("density")
         self.densityspin.set_value(self.d.density)
+
+        # Font sizes store and combobox
+        self.qsize_combo = self.builder.get_object("qsize")
+        self.size_combo = self.builder.get_object("size")
+
+        self.qsize_combo.set_entry_text_column(0)
+        self.qsize_combo.connect("changed", self.on_combobox_changed)
+        self.size_combo.set_entry_text_column(0)
+        self.size_combo.connect("changed", self.on_combobox_changed)
+        for size in self.kj.latex_sizes:
+            self.qsize_combo.append_text(size)
+            self.size_combo.append_text(size)
+        self.qsize_combo.set_active(3)
+        self.size_combo.set_active(3)
+
+        self.qsize_combo = self.builder.get_object("qsize")
+
+        self.size_combo = self.builder.get_object("size")
 
         self.treeview = self.builder.get_object("questions")
         self.namelist = self.builder.get_object("question_store")
@@ -703,6 +721,13 @@ class MainGui:
             self.d.pagedimensions['custom'][size] = entry.get_text()
         self.kj.set_preamble(self.d.page)
 
+    def on_combobox_changed(self, combobox):
+        self.logger.debug('ComboBox %s changed' % combobox)
+        combo_name = combobox.get_name()
+        choice = combobox.get_active_text()
+        if choice != None:
+            self.kj.sel_sizes[combo_name] = "\\" + choice
+
     def on_margins_set_clicked(self, event):
         """ Set margins."""
         self.logger.debug('Button %s pressed' % event)
@@ -815,6 +840,7 @@ class MainGui:
             return user_data
 
     def outside_task(self):
+        self.kj.set_sizes()
         if self.all:
             for name in self.d.qblocks.keys():
                 filename = self.kj.create_latex(self.d.qblocks[name])
