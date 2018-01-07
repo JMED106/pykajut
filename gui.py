@@ -223,19 +223,22 @@ class Data:
                 time = re.findall(r'% Time: (.*?)\n', block)
                 if time:
                     self.logger.debug("Time: %s" % time[0])
+                    question = re.findall(r'% Time:.*?\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
+                    if not question:
+                        self.logger.debug("Trying tabbedenum ...")
+                        question = re.findall(r'% Time:.*?\n(.*?)\\begin\{tabbedenum\}\{2\}\n', block, re.DOTALL)
                 else:
                     time = ("None")
-                # question = re.findall(title[0] + r'\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
-                question = re.findall(r'% Title:.*?\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
-                if not question:
-                    self.logger.debug("Trying tabbedenum ...")
-                    question = re.findall(title[0] + r'\n(.*?)\\begin\{tabbedenum\}\{2\}\n', block, re.DOTALL)
+                    question = re.findall(r'% Title:.*?\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
+                    if not question:
+                        self.logger.debug("Trying tabbedenum ...")
+                        question = re.findall(r'% Title:.*?\n(.*?)\\begin\{tabbedenum\}\{2\}\n', block, re.DOTALL)
                 if not question:
                     self.logger.error('Bad format for questions or empty file %s ...' % name[0])
                     raw_input("Continue ...")
                     continue
                 self.logger.debug("Question: %s" % question[0])
-                choices = re.findall(r'\\Myitem*(.*?%*enditem)\n', block, re.DOTALL)
+                choices = re.findall(r'\\Myitem*(.*?%*enditem).*?\n', block, re.DOTALL)
                 self.logger.debug("Choices:")
                 self.logger.debug(choices)
                 correct = None
@@ -573,6 +576,7 @@ class MainGui:
         self.title_label = self.builder.get_object('title_label')
         self.time_label = self.builder.get_object('time_label')
         self.correct_box = self.builder.get_object('correct_box')
+        self.correct_icon = self.builder.get_object("correct_icon")
 
         # We create the listbox store for the questions
         if self.d.qblocks:
@@ -590,7 +594,6 @@ class MainGui:
         # Sort the quetions
         sorted_model = self.builder.get_object("question_sort")
         sorted_model.set_sort_column_id(1, Gtk.SortType.ASCENDING)
-        self.correct_icon = self.builder.get_object("correct_icon")
         self.treeview.set_cursor(0)
         self.window.show_all()
 
@@ -942,6 +945,8 @@ class EditDialog(Gtk.Dialog):
 
         # Obtain the entry and text objects
         self.entry = self._builder.get_object("entry")
+        self.title_entry = self._builder.get_object("title_entry")
+        self.time_entry = self._builder.get_object("time_entry")
         self.text_sentence = self._builder.get_object("textsentence")
         self.sentence = self._builder.get_object("sentence")
         self.choices = []
@@ -958,6 +963,8 @@ class EditDialog(Gtk.Dialog):
         # If the dialog is for editing, modify the text in the buffers
         if selection:
             self.entry.set_text(selection)
+            self.title_entry.set_text(data.qblocks[selection]['title'])
+            self.time_entry.set_text(data.qblocks[selection]['time'])
             self.sentence.set_text(data.qblocks[selection]['question'])
             for k, choice in enumerate(self.choices):
                 choice.set_text(data.qblocks[selection]['choices'][k])
@@ -979,11 +986,14 @@ class EditDialog(Gtk.Dialog):
         if name not in self.qblocks:
             self.new = True
         if name not in (None, ""):
+            title = self.title_entry.get_text()
+            time = self.time_entry.get_text()
             sentence = self.get_text(self.sentence)
             choices = []
             for k, choice in enumerate(self.choices):
                 choices.append(self.get_text(choice))
-            self.qblocks[name] = {'question': sentence, 'name': name, 'choices': choices}
+            self.qblocks[name].update({'question': sentence, 'name': name, 'choices': choices,
+                                       'title': title, 'time': time})
             self.hide()
             self.accept = True
         else:
