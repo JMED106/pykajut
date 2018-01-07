@@ -220,6 +220,11 @@ class Data:
                 self.logger.debug("File name: %s" % name[0])
                 title = re.findall(r'% Title: (.*?)\n', block)
                 self.logger.debug("Title: %s" % title[0])
+                time = re.findall(r'% Time: (.*?)\n', block)
+                if time:
+                    self.logger.debug("Time: %s" % time[0])
+                else:
+                    time = ("None")
                 # question = re.findall(title[0] + r'\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
                 question = re.findall(r'% Title:.*?\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
                 if not question:
@@ -239,7 +244,7 @@ class Data:
                         self.logger.debug("Correct choice is %d." % (j + 1))
                         correct = j
                 qblocks[name[0]] = ({'name': name[0], 'title': title[0], 'question': question[0],
-                                     'choices': choices, 'correct': correct})
+                                     'choices': choices, 'correct': correct, 'time': time[0]})
 
         self.logger.debug(qblocks)
         return qblocks
@@ -564,6 +569,10 @@ class MainGui:
         self.timeout_id = None
         self.selected_name = None
         self.all = False
+        # Question's extra properties
+        self.title_label = self.builder.get_object('title_label')
+        self.time_label = self.builder.get_object('time_label')
+        self.correct_box = self.builder.get_object('correct_box')
 
         # We create the listbox store for the questions
         if self.d.qblocks:
@@ -581,6 +590,7 @@ class MainGui:
         # Sort the quetions
         sorted_model = self.builder.get_object("question_sort")
         sorted_model.set_sort_column_id(1, Gtk.SortType.ASCENDING)
+        self.correct_icon = self.builder.get_object("correct_icon")
         self.treeview.set_cursor(0)
         self.window.show_all()
 
@@ -750,6 +760,22 @@ class MainGui:
         self.logger.debug('Selected question: %s' % name)
         filename = self.d.pngdir + '/tex-' + name + '.png'
         filename2 = self.d.pngdir + '/tex-' + name + '-0.png'
+        # Change the title and time labels, update correct answer icon
+        if self.d.qblocks[name]['title']:
+            self.title_label.set_text(self.d.qblocks[name]['title'])
+        else:
+            self.title_label.set_text("Not defined.")
+        if self.d.qblocks[name]['time']:
+            self.time_label.set_text(self.d.qblocks[name]['time'])
+        else:
+            self.time_label.set_text("Not defined.")
+        if self.d.qblocks[name]['correct'] is not None:
+            correct = int(self.d.qblocks[name]['correct'])
+            icon = self.d.app_path + ('/art/icon%d.png' % correct)
+            self.logger.debug("Setting icon %s (%d) in %s" % (icon, correct, self.correct_icon))
+            self.correct_icon.set_from_file(icon)
+        else:
+            self.correct_icon.set_from_icon_name('gtk-missing-image', Gtk.IconSize.DIALOG)
         # Check whether a PNG file exists for the selected question
         if self.d.check_file(filename, critical=False, warning=True):
             # Display the PNG in the canvas area
