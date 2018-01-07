@@ -215,24 +215,27 @@ class Data:
         for k, block in enumerate(question_blocks):
             self.logger.debug("Block %d" % k)
             if block:
+                self.logger.debug(block)
                 name = re.findall(r'% File_name: (.*?)\n', block)
-
                 self.logger.debug("File name: %s" % name[0])
                 title = re.findall(r'% Title: (.*?)\n', block)
                 self.logger.debug("Title: %s" % title[0])
-                question = re.findall(title[0] + r'\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
+                # question = re.findall(title[0] + r'\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
+                question = re.findall(r'% Title:.*?\n(.*?)\\begin\{enumerate\}\n', block, re.DOTALL)
                 if not question:
+                    self.logger.debug("Trying tabbedenum ...")
                     question = re.findall(title[0] + r'\n(.*?)\\begin\{tabbedenum\}\{2\}\n', block, re.DOTALL)
                 if not question:
-                    self.logger.warning('Bad format for questions or empty file ...')
-                    return None
+                    self.logger.error('Bad format for questions or empty file %s ...' % name[0])
+                    raw_input("Continue ...")
+                    continue
                 self.logger.debug("Question: %s" % question[0])
-                choices = re.findall(r'\\Myitem (.*?%enditem)\n', block, re.DOTALL)
+                choices = re.findall(r'\\Myitem*(.*?%*enditem)\n', block, re.DOTALL)
                 self.logger.debug("Choices:")
                 self.logger.debug(choices)
                 correct = None
                 for j, choice in enumerate(choices):
-                    if re.findall(r'% Correct', choice):
+                    if re.findall(r'%*Correct', choice):
                         self.logger.debug("Correct choice is %d." % (j + 1))
                         correct = j
                 qblocks[name[0]] = ({'name': name[0], 'title': title[0], 'question': question[0],
@@ -259,26 +262,26 @@ class Kajut(object):
                  "  \\vspace*{1em}\n" \
                  "  \\noindent\n" \
                  "  \\begin{tabular}{c} \n" \
-                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n" \
+                 "    \\begin{minipage}[c]{\\ISize\\textwidth}\n" \
                  "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image0}}}\n" \
                  "    \\end{minipage}\\hspace*{0.5em}\n" \
-                 "    \\begin{minipage}[t]{0.4\\textwidth}\n" \
+                 "    \\begin{minipage}[c]{0.4\\textwidth}\n" \
                  "      {\n" \
                  "        \\Size #1\n" \
                  "      }\n" \
                  "    \\end{minipage}\\hspace*{0.5em}\n" \
-                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n" \
+                 "    \\begin{minipage}[c]{\\ISize\\textwidth}\n" \
                  "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image1}}}\n" \
                  "    \\end{minipage}\\hspace*{0.5em}\n" \
-                 "    \\begin{minipage}[t]{0.4\\textwidth}\n" \
+                 "    \\begin{minipage}[c]{0.4\\textwidth}\n" \
                  "      {\n" \
                  "        \\Size #2\n" \
                  "      }\n" \
                  "    \\end{minipage}\\\\[2em] \n" \
-                 "    \\begin{minipage}[t]{\\ISize\\textwidth}\n" \
+                 "    \\begin{minipage}[c]{\\ISize\\textwidth}\n" \
                  "      {\\adjustbox{valign = c}{\\includegraphics[width=\\textwidth]{art/image2}}}\n" \
                  "    \\end{minipage}\\hspace*{0.5em}\n" \
-                 "    \\begin{minipage}[t]{0.4\\textwidth}\n" \
+                 "    \\begin{minipage}[c]{0.4\\textwidth}\n" \
                  "      {\n" \
                  "        \\Size #3\n" \
                  "      }\n" \
@@ -842,7 +845,9 @@ class MainGui:
     def outside_task(self):
         self.kj.set_sizes()
         if self.all:
-            for name in self.d.qblocks.keys():
+            blocks = len(self.d.qblocks.keys())
+            for k, name in enumerate(self.d.qblocks.keys()):
+                self.logger.info("File %d/%d:" % (k+1, blocks))
                 filename = self.kj.create_latex(self.d.qblocks[name])
                 self.kj.create_png(filename)
             self.all = False
