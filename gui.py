@@ -343,14 +343,24 @@ class Kajut(object):
         # Font sizes and design
         f.write(self.sizes)
         f.write(self.designs[self.d.design])
-        for a, choice in zip(["A", "B", "C", "D"], qblock['choices']):
-            f.write("\\def\\" + a + "{" + choice + "\n}\n")
+        num_choices = len(qblock['choices'])
+        if num_choices < 4:
+            self.logger.warning("This question (%s) has only %d choices!" % (qblock['name'], num_choices))
+        else:
+            for a, choice in zip(["A", "B", "C", "D"], qblock['choices']):
+                f.write("\\def\\" + a + "{" + choice + "\n}\n")
         # % File_name: T1_c1.1_q1
         # % Title: Pregunta 1
         f.write("% File_name: " + qblock['name'] + "\n")
         f.write("% Title: " + qblock['name'] + "\n")
         f.write("{\\QSize\n" + qblock['question'] + "\n}\n")
-        f.write("\\kajut{\\A}{\\B}{\\C}{\\D}\n")
+        if num_choices == 4:
+            f.write("\\kajut{\\A}{\\B}{\\C}{\\D}\n")
+        else:
+            f.write("{\\noindent\n" + " \\begin{enumerate}\n")
+            for choice in qblock['choices']:
+                f.write("\\Myitem \\Size " + choice + "\n")
+            f.write(" \\end{enumerate}  \n" + "}\n")
         f.write(self.ending)
         f.close()
         self.logger.debug("LaTeX file created!")
